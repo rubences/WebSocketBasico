@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <script type="text/javascript">
+            var socket = null;
+            var isopen = false;
+
+            function display_message(where, content) {
+                var tbody = document.getElementById(where);
+                var tr = document.createElement("tr");
+                var td = document.createElement("td");
+                td.appendChild(document.createTextNode(content));
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            };
+
+            window.onload = function() {
+
+                socket = new WebSocket("ws://127.0.0.1:9000");
+                socket.binaryType = "arraybuffer";
+
+                socket.onopen = function() {
+                    console.log("Connected!");
+                    isopen = true;
+                }
+
+                socket.onmessage = function(e) {
+                    if (typeof e.data == "string") {
+                        try {
+                            var json = JSON.parse( e.data );
+                            console.log("JSON message received: " + e.data);
+                            display_message("json_messages", json);  // We will see [object] without any specific.
+                        } catch(e) {
+                            console.log("Text message received: " + e.data);
+                            display_message("text_messages", e.data);
+                        }
+                    } else {
+                        var arr = new Uint8Array(e.data);
+                        var hex = '';
+                        for (var i = 0; i < arr.length; i++) {
+                            hex += ('00' + arr[i].toString(16)).substr(-2);
+                        }
+                        display_message("binary_messages", hex);
+                        console.log("Binary message received: " + hex);
+                    }
+                }
+
+                socket.onclose = function(e) {
+                    console.log("Connection closed.");
+                    socket = null;
+                    isopen = false;
+                }
+        };
+
+        function sendText() {
+            if (isopen) {
+                socket.send("Hello, world!");
+                console.log("Text message sent.");               
+            } else {
+                console.log("Connection not opened.")
+            }
+        };
+
+        function sendJson() {
+            if (isopen) {
+                socket.send('{"k": "v"}');
+                console.log('{"k": "v"}');
+            } else {
+                console.log("Connection not opened.")
+            }
+        };
+
+        function sendBinary() {
+            if (isopen) {
+                var buf = new ArrayBuffer(32);
+                var arr = new Uint8Array(buf);
+                for (i = 0; i < arr.length; ++i) arr[i] = i;
+                socket.send(buf);
+                console.log("Binary message sent.");
+            } else {
+                console.log("Connection not opened.")
+            }
+        };
+        </script>
+    </head>
+    <body>
+        <h1>Websocket basic example</h1>
+        <p>Open JavaScript console to see debug messages (F12).</p>
+        <button onclick='sendText();'>Send Text Message</button>
+        <button onclick='sendJson();'>Send Json Message</button>
+        <button onclick='sendBinary();'>Send Binary Message</button>
+        <div style="width: 1200px;">
+            <table style="float: left; width: 250px;">
+              	<thead>
+                    <tr>
+                        <th>Test messages</th>
+                    </tr>
+              	</thead>
+                <tbody id="text_messages"></tbody>
+            </table>
+            <table style="float: left; width: 250px;">
+              	<thead>
+                    <tr>
+                        <th>JSON messages</th>
+                    </tr>
+              	</thead>
+                <tbody id="json_messages"></tbody>
+            </table>
+            <table style="float: left; width: 700px;">
+              	<thead>
+                    <tr>
+                        <th>Binary messages</th>
+                    </tr>
+              	</thead>
+              	<tbody id="binary_messages"></tbody>
+            </table>
+            <br style="clear: both;" />
+        </div>
+    </body>
+</html>
